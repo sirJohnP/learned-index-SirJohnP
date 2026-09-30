@@ -1,0 +1,13 @@
+.idea
+.DS_Store
+
+target/
+out/
+*.pdf
+
+.mvn/wrapper/maven-wrapper.jar
+
+/hw-template.jar
+/results.txt
+/*_uint32
+/*_uint64
