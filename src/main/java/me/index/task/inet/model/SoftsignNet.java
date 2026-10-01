@@ -15,8 +15,9 @@ public final class SoftsignNet extends AbstractNet {
     }
 
     @Override
-    protected double derivative(double z) {
-        return 1 / ((1 + Math.abs(z))*(1 + Math.abs(z)));
+    protected double derivative(double activ) {
+        double z = 1 - Math.abs(activ);
+        return z*z;
     }
 
     @Override
