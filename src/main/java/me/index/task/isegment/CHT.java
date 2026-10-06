@@ -9,8 +9,12 @@ public enum CHT implements Window {
 
     private final ArrayList<Line> upper = new ArrayList<>();
     private final ArrayList<Line> lower = new ArrayList<>();
-    int l, u;
-    double wOpt;
+    private int l, u;
+    private double wOpt;
+
+    private Line bestLower;
+    private Line bestUpper;
+    private double bestWOpt;
 
     @Override
     public int init_skip(long key, long err) {
@@ -32,93 +36,65 @@ public enum CHT implements Window {
             l = 0;
             u = 0;
             wOpt = INF;
+
+            bestWOpt = INF;
+            bestLower = lower.getFirst();
+            bestUpper = upper.getFirst();
             return true;
         }
 
-        int i = lower.size() - 1;
-        int nextU = u;
-        int nextL = l;
-
-        double leftW = INF;
-        double rightW = INF;
-
-        double nextWOpt = wOpt;
-        while (i >= 1 && (double)(pos - lower.get(i).b) / (lower.get(i).k - key) <= lower.get(i).from) {
-            if (nextWOpt != INF && nextL == i) {
-                nextL--;
+        while (lower.size() >= 2 && (double)(pos - lower.getLast().b) / (lower.getLast().k - key) <= lower.getLast().from) {
+            if (wOpt != INF && l == lower.size() - 1) {
+                l--;
             }
-            i--;
+            lower.removeLast();
         }
 
-        if (i >= 0) {
-            double w = (double)(pos - lower.get(i).b) / (lower.get(i).k - key);
-            if (nextWOpt != INF && w < nextWOpt) {
-                nextWOpt = w;
-                while (nextU < upper.size() - 1 && upper.get(nextU).to >= nextWOpt) {
-                    nextU++;
-                }
+        double w = (double)(pos - lower.getLast().b) / (lower.getLast().k - key);
+        if (wOpt != INF && w < wOpt) {
+            wOpt = w;
+            while (u < upper.size() - 1 && upper.get(u).to >= wOpt) {
+                u++;
             }
-            if (i == 0) {
-                if (nextWOpt == INF) {
-                    nextWOpt = w;
-                    nextL = 0;
-                    nextU = 0;
-                }
+        }
+        if (lower.size() == 1) {
+            if (wOpt == INF) {
+                wOpt = w;
+                l = 0;
+                u = 0;
             }
-            leftW = w;
-        } 
+        }
+        lower.getLast().to = w;
+        lower.add(new Line(key, pos, w, INF));
 
-        int j = upper.size() - 1;
-
-        while (j >= 1 && (double)(pos - upper.get(j).b) / (upper.get(j).k - key) >= upper.get(j).from) {
-            if (nextWOpt != INF && nextU == j) {
-                nextU--;
+        while (upper.size() >= 2 && (double)(pos - upper.getLast().b) / (upper.getLast().k - key) >= upper.getLast().from) {
+            if (wOpt != INF && u == upper.size() - 1) {
+                u--;
             }
-            j--;
+            upper.removeLast();
         }
 
-        if (j >= 0) {
-            double w = (double)(pos - upper.get(j).b) / (upper.get(j).k - key);
-            if (nextWOpt != INF && nextWOpt <= w) {
-                nextU++;
-                nextWOpt = w;
-                while (nextL <= i && Math.min(lower.get(nextL).to, leftW) < nextWOpt) {
-                    nextL++;
-                }
+        w = (double)(pos - upper.getLast().b) / (upper.getLast().k - key);
+        if (wOpt != INF && wOpt <= w) {
+            u++;
+            wOpt = w;
+            while (l < lower.size() - 1 && lower.get(l).to < wOpt) {
+                l++;
             }
-            rightW = w;
-        } 
+        }
+        upper.getLast().to = w;
+        upper.add(new Line(key, pos, w, -INF));
 
-        double newErr = nextWOpt * (double)((nextU == j + 1 ? key : upper.get(nextU).k) - (nextL == i + 1 ? key : lower.get(nextL).k)) + ((nextU == j + 1 ? pos : upper.get(nextU).b) - (nextL == i + 1 ? pos : lower.get(nextL).b));
+        double newErr = wOpt * (double)(upper.get(u).k - lower.get(l).k) + (upper.get(u).b - lower.get(l).b);
         
         if (newErr > 2 * err) {
             return false;
         }
-        while (lower.size() > i + 1) {
-            lower.removeLast();
-        }
-        if (lower.size() == 0) {
-            lower.add(new Line(key, pos, -INF, INF));
-        } else {
-            lower.getLast().to = leftW;
-            lower.add(new Line(key, pos, leftW, INF));
-        }
 
-        while (upper.size() > j + 1) {
-            upper.removeLast();
-        }
-        if (upper.size() == 0) {
-            upper.add(new Line(key, pos, INF, -INF));
-        } else {
-            upper.getLast().to = rightW;
-            upper.add(new Line(key, pos, rightW, -INF));
-        }
-
-        l = nextL;
-        u = nextU;
-        wOpt = nextWOpt;
+        bestLower = lower.get(l);
+        bestUpper = upper.get(u);
+        bestWOpt = wOpt;
         return true;
-
     }
 
     @Override
@@ -129,7 +105,7 @@ public enum CHT implements Window {
         if (lower.size() == 1) {
             return new double[]{0.0, lower.get(0).b};
         }
-        return new double[]{wOpt, wOpt * (double)(upper.get(u).k + lower.get(l).k) / 2 + (double)(upper.get(u).b + lower.get(l).b) / 2};
+        return new double[]{bestWOpt, bestWOpt * (double)(bestUpper.k + bestLower.k) / 2 + (double)(bestUpper.b + bestLower.b) / 2};
     }
 
     private class Line {
