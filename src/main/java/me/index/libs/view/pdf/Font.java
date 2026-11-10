@@ -1,4 +1,4 @@
-package me.index.libs.view;
+package me.index.libs.view.pdf;
 
 public enum Font {
     HELVETICA("Helvetica"),

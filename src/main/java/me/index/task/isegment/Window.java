@@ -1,7 +1,5 @@
 package me.index.task.isegment;
 
-import me.index.libs.math.Maths;
-
 public interface Window {
     int init_skip(long key, long err);
 
@@ -27,17 +25,15 @@ public interface Window {
             }
 
             double[] line = window.get_result();
+            if (line == null || line.length != 2) {
+                throw new IllegalStateException("get_result must return {slope, intercept}");
+            }
             double slope = line[0];
             double intercept = line[1];
-            int error = 0;
-            for (int i = start; i < start + length; i++) {
-                error = Math.max(error, Math.abs((i - start) - Maths.predict(slope, intercept, keys[i])));
+            if (!Double.isFinite(slope) || !Double.isFinite(intercept)) {
+                throw new IllegalStateException("non-finite segment coefficients at start " + start
+                        + ": slope=" + slope + ", intercept=" + intercept);
             }
-            if (error > maxErr) {
-                System.err.println("[WARNING] large error due to the limited precision of doubles, found: "
-                        + error + ", expected: " + maxErr);
-            }
-
             segments.accept(start, start + length, slope, intercept);
             start += length;
         }

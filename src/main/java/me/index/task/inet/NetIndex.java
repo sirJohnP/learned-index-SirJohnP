@@ -60,8 +60,11 @@ public final class NetIndex implements Index {
 
     @Override
     public int predict(int key) {
-        int pos = (int) Math.round(model.predict(normalize(key)) * (n - 1));
-        return Math.min(Math.max(pos, 0), n - 1);
+        double predicted = model.predict(normalize(key)) * (n - 1);
+        if (Double.isNaN(predicted)) {
+            throw new IllegalStateException("model predicted NaN for key " + key);
+        }
+        return Math.clamp(Math.round(predicted), 0, n - 1);
     }
 
     @Override

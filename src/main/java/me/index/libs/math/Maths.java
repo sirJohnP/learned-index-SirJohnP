@@ -170,6 +170,9 @@ public final class Maths {
         double[] out = new double[m.length == 0 ? 0 : m[0].length];
         for (int i = 0; i < m.length; i++) {
             double[] row = m[i];
+            if (row.length != out.length) {
+                throw new IllegalArgumentException("matrix rows must have the same length");
+            }
             double scale = v[i];
             for (int j = 0; j < row.length; j++) {
                 out[j] += row[j] * scale;

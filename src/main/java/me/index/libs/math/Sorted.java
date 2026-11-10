@@ -31,14 +31,33 @@ public final class Sorted {
     }
 
     public static int lowerBoundNear(int[] keys, int key, int predicted, int maxErr) {
-        int from = Math.clamp((long) predicted - maxErr, 0, keys.length);
-        int to = Math.clamp((long) predicted + maxErr + 1, from, keys.length);
-        int found = lowerBound(keys, from, to, key);
-        if (found == from && from > 0 && keys[from - 1] >= key) {
-            return lowerBound(keys, 0, from - 1, key);
+        return lowerBoundNear(keys, 0, keys.length, key, predicted, maxErr);
+    }
+
+    public static int lowerBoundNear(int[] keys, int from, int to, int key, int predicted, int maxErr) {
+        if (from == to) return from;
+        int pivot = Math.clamp(predicted, from, to - 1);
+        int lo = Math.clamp((long) pivot - maxErr, from, to);
+        int hi = Math.clamp((long) pivot + maxErr + 1, lo, to);
+        int found;
+        if (maxErr <= 32) {
+            int value = keys[pivot];
+            if (value == key) return pivot;
+            found = pivot;
+            if (value < key) {
+                found++;
+                while (found < hi && keys[found] < key) found++;
+            } else {
+                while (found > lo && keys[found - 1] >= key) found--;
+            }
+        } else {
+            found = lowerBound(keys, lo, hi, key);
         }
-        if (found == to && to < keys.length && keys[to] < key) {
-            return lowerBound(keys, to + 1, keys.length, key);
+        if (found == lo && lo > from && keys[lo - 1] >= key) {
+            return lowerBound(keys, from, lo - 1, key);
+        }
+        if (found == hi && hi < to && keys[hi] < key) {
+            return lowerBound(keys, hi + 1, to, key);
         }
         return found;
     }
