@@ -1,84 +1,61 @@
 package me.index.config;
 
 import me.index.config.parameters.enums.LossFunction;
-import me.index.config.parameters.enums.MaxErr;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public final class Keys {
-    public static final String DATA_KEYSET = "data.keyset";
-    public static final String DATA_SIZE = "data.size";
-    public static final String DATA_SEED = "data.seed";
-
-    public static final String INDEX_TYPES = "index.types";
-    public static final String INDEX_ERR = "index.err";
-
-    public static final String NET_LAYERS = "net.layers";
-    public static final String NET_LOSS = "net.train.loss";
-    public static final String NET_RATE = "net.train.rate";
-    public static final String NET_EPOCHS = "net.train.epochs";
-    public static final String NET_BATCH = "net.train.batch.size";
-    public static final String NET_SEED = "net.train.seed";
-
-    public static final String OUT_PATH = "out.path";
-
-    public static final long DEFAULT_DATA_SEED = 42L;
-    public static final MaxErr DEFAULT_ERR = MaxErr._32;
-    public static final List<Integer> DEFAULT_LAYERS = List.of(4, 4);
-    public static final LossFunction DEFAULT_LOSS = LossFunction._squared;
-    public static final int DEFAULT_EPOCHS = 100;
-    public static final int DEFAULT_BATCH = 32;
-    public static final long DEFAULT_NET_SEED = 42L;
-    public static final String DEFAULT_OUT_PATH = "out";
-
-    public static final String NO_LAYERS = "none";
-
+final class PropertyParser {
+    private static final String NO_LAYERS = "none";
     private static final String SEPARATOR = ";";
 
-    private final Properties props;
-    private final Set<String> asked = new LinkedHashSet<>();
+    private final Map<String, String> properties;
 
-    public Keys(Properties props) {
-        this.props = props;
+    PropertyParser(Properties properties) {
+        this.properties = properties.stringPropertyNames().stream()
+                .collect(Collectors.toUnmodifiableMap(Function.identity(), properties::getProperty));
     }
 
-    public <E extends Enum<E>> List<E> enums(String key, E[] allowed, E fallback) {
+    <E extends Enum<E>> List<E> enums(String key, E[] allowed, E fallback) {
         return values(key, allowed(allowed), text -> constant(key, allowed, text), List.of(fallback));
     }
 
-    public <E extends Enum<E>> List<E> requiredEnums(String key, E[] allowed) {
+    <E extends Enum<E>> List<E> requiredEnums(String key, E[] allowed) {
         return required(key, allowed(allowed), text -> constant(key, allowed, text));
     }
 
-    public List<Integer> positiveInts(String key, int fallback) {
-        return values(key, "a positive int", text -> positive(key, Integer.parseInt(text)), List.of(fallback));
+    List<Integer> positiveInts(String key, int fallback) {
+        return values(key, "a positive int",
+                text -> positive(key, Integer.parseInt(text)), List.of(fallback));
     }
 
-    public List<Long> longs(String key, long fallback) {
+    List<Long> longs(String key, long fallback) {
         return values(key, "an integer", Long::parseLong, List.of(fallback));
     }
 
-    public List<Double> positiveDoubles(String key) {
-        return values(key, "a finite positive number", text -> finitePositive(key, Double.parseDouble(text)), List.of());
+    List<Double> positiveDoubles(String key) {
+        return values(key, "a finite positive number",
+                text -> finitePositive(key, Double.parseDouble(text)), List.of());
     }
 
-    public List<List<Integer>> layerShapes(String key, List<Integer> fallback) {
+    List<List<Integer>> layerShapes(String key, List<Integer> fallback) {
         return values(key, "comma-separated positive ints, or " + NO_LAYERS,
                 text -> shape(key, text), List.of(fallback));
     }
 
-    public List<LossFunction.Choice> losses(String key, LossFunction fallback) {
+    List<LossFunction.Choice> losses(String key, LossFunction fallback) {
         return values(key, allowed(LossFunction.values()) + ", optionally with a parameter in parentheses",
-                text -> loss(key, text), List.of(new LossFunction.Choice(fallback, fallback.defaultParameter())));
+                text -> loss(key, text),
+                List.of(new LossFunction.Choice(fallback, fallback.defaultParameter())));
     }
 
-    public String single(String key, String fallback) {
+    String single(String key, String fallback) {
         List<String> parts = raw(key);
         if (parts.isEmpty()) {
             return fallback;
@@ -90,17 +67,17 @@ public final class Keys {
         return parts.get(0);
     }
 
-    public void rejectUnknown() {
+    void rejectUnknown(Set<String> allowed) {
         List<String> unknown = new ArrayList<>();
-        for (String key : props.stringPropertyNames()) {
-            if (!asked.contains(key)) {
+        for (String key : properties.keySet()) {
+            if (!allowed.contains(key)) {
                 unknown.add(key);
             }
         }
         if (unknown.isEmpty()) {
             return;
         }
-        List<String> known = new ArrayList<>(asked);
+        List<String> known = new ArrayList<>(allowed);
         unknown.sort(null);
         known.sort(null);
         throw new IllegalArgumentException("unknown propert" + (unknown.size() == 1 ? "y " : "ies ")
@@ -108,8 +85,7 @@ public final class Keys {
     }
 
     private List<String> raw(String key) {
-        asked.add(key);
-        String value = props.getProperty(key);
+        String value = properties.get(key);
         if (value == null || value.isBlank()) {
             return List.of();
         }
@@ -138,7 +114,7 @@ public final class Keys {
         return parseAll(key, expected, parse, parts);
     }
 
-    private <T> List<T> parseAll(String key, String expected, Function<String, T> parse, List<String> parts) {
+    private static <T> List<T> parseAll(String key, String expected, Function<String, T> parse, List<String> parts) {
         List<T> out = new ArrayList<>(parts.size());
         for (String part : parts) {
             try {

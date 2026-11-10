@@ -1,4 +1,4 @@
-package me.index.libs.view;
+package me.index.libs.view.pdf;
 
 import java.util.Locale;
 

@@ -1,6 +1,11 @@
 package me.index.libs.view;
 
+import me.index.libs.view.pdf.Document;
+import me.index.libs.view.pdf.Font;
+import me.index.libs.view.pdf.Page;
+
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -98,36 +103,43 @@ public final class Plot {
     }
 
     public Plot title(String text) {
+        checkMutable();
         this.title = text;
         return this;
     }
 
     public Plot xlabel(String text) {
+        checkMutable();
         this.xLabel = text;
         return this;
     }
 
     public Plot ylabel(String text) {
+        checkMutable();
         this.yLabel = text;
         return this;
     }
 
     public Plot grid(boolean show) {
+        checkMutable();
         this.showGrid = show;
         return this;
     }
 
     public Plot legend(boolean show) {
+        checkMutable();
         this.legendOverride = show;
         return this;
     }
 
     public Plot xTicks(int count) {
+        checkMutable();
         this.xTicks = requirePositive(count, "xTicks");
         return this;
     }
 
     public Plot yTicks(int count) {
+        checkMutable();
         this.yTicks = requirePositive(count, "yTicks");
         return this;
     }
@@ -140,23 +152,27 @@ public final class Plot {
     }
 
     public Plot xlim(double min, double max) {
+        checkMutable();
         this.minX = min;
         this.maxX = max;
         return this;
     }
 
     public Plot ylim(double min, double max) {
+        checkMutable();
         this.minY = min;
         this.maxY = max;
         return this;
     }
 
     public Plot squareMarkers(boolean use) {
+        checkMutable();
         this.squareMarkers = use;
         return this;
     }
 
     public Plot line(double[] x, double[] y, Color color, String label, double lineWidth) {
+        checkMutable();
         layers.add(new Layer(Kind.LINE, x, y, color, label, lineWidth));
         return this;
     }
@@ -182,6 +198,7 @@ public final class Plot {
     }
 
     public Plot scatter(double[] x, double[] y, Color color, String label, double pointRadius) {
+        checkMutable();
         layers.add(new Layer(Kind.SCATTER, x, y, color, label, pointRadius));
         return this;
     }
@@ -206,7 +223,12 @@ public final class Plot {
         return scatter(toDouble(x), toDouble(y), label);
     }
 
+    private void checkMutable() {
+        if (rendered) throw new IllegalStateException("plot cannot be changed after its first write");
+    }
+
     private Color nextAutoColor() {
+        checkMutable();
         Color c = AUTO_PALETTE[autoColorIndex % AUTO_PALETTE.length];
         autoColorIndex++;
         return c;
@@ -218,12 +240,12 @@ public final class Plot {
         return r;
     }
 
-    public void save(String path) throws IOException {
+    public void write(OutputStream output) throws IOException {
         if (!rendered) {
             render();
             rendered = true;
         }
-        doc.save(path);
+        doc.write(output);
     }
 
     private boolean hasLegend() {

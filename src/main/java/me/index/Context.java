@@ -1,43 +1,50 @@
 package me.index;
 
-import me.index.config.Dataset;
-import me.index.config.parameters.enums.Keyset;
-import me.index.libs.io.ReadUtils;
-import me.index.libs.math.Utils;
+import me.index.config.parameters.DataParams;
+import me.index.libs.io.SosdReader;
+import me.index.libs.math.KeyGenerator;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
 
-public final class Context {
-    public final Dataset dataset;
-    public final long[] keys;
-
-    public Context(Dataset dataset, Path dataDir) throws IOException {
+public record Context(DataParams dataset, long[] keys) {
+    public Context(DataParams dataset, long[] keys) {
         this.dataset = dataset;
-        Random rnd = new Random(dataset.seed());
-        Keyset keyset = dataset.keyset();
-        int size = dataset.size().size;
-
-        this.keys = switch (keyset.source) {
-            case SOSD -> ReadUtils.read(dataDir.resolve(keyset.fileName()), size,
-                    keyset.isLong, keyset.needShift, keyset.needPlusOne);
-            case GAUSSIAN -> Utils.genKeysGaussian(size, keyset.isLong, rnd);
-            case LOGNORMAL -> Utils.genKeysLognormal(size, keyset.isLong, rnd);
-        };
+        this.keys = keys;
 
         if (keys.length < 2) {
-            throw new IllegalStateException("keyset " + keyset + " with " + dataset.size()
+            throw new IllegalStateException("keyset " + dataset.keyset() + " with " + dataset.size()
                     + " yielded " + keys.length + " distinct key(s); at least 2 are required");
         }
         for (int i = 1; i < keys.length; i++) {
             if (keys[i - 1] >= keys[i]) {
-                throw new IllegalStateException("keyset " + keyset + " is not strictly increasing: keys[" + (i - 1)
-                        + "] = " + keys[i - 1] + " >= keys[" + i + "] = " + keys[i]
-                        + "; the pipeline treats the array index as the key's rank, so the input must be sorted"
-                        + " and free of duplicates");
+                throw new IllegalStateException(
+                        "keyset " + dataset.keyset() + " is not strictly increasing: keys[" + (i - 1)
+                                + "] = " + keys[i - 1] + " >= keys[" + i + "] = " + keys[i]
+                                + "; the pipeline treats the array index as the key's rank, so the input must be sorted"
+                                + " and free of duplicates");
             }
         }
+    }
+
+    public static Context load(DataParams dataset, Path dataDir) throws IOException {
+        long[] keys = switch (dataset.keyset().source) {
+            case GAUSSIAN -> KeyGenerator.gaussian(
+                    dataset.size().size, dataset.keyset().isLong, new Random(dataset.seed())
+            );
+            case LOGNORMAL -> KeyGenerator.lognormal(
+                    dataset.size().size, dataset.keyset().isLong, new Random(dataset.seed())
+            );
+            case SOSD -> {
+                try (InputStream input = Files.newInputStream(dataDir.resolve(dataset.keyset().fileName()))) {
+                    yield SosdReader.read(input, dataset.size().size, dataset.keyset().isLong);
+                }
+            }
+        };
+        return new Context(dataset, keys);
     }
 
     public int[] intKeys() {

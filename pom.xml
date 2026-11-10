@@ -14,6 +14,15 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>6.1.3</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <finalName>hw-template</finalName>
         <plugins>
@@ -25,6 +34,22 @@
                     <compilerArgs>
                         <arg>-Xlint:all</arg>
                     </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.5</version>
+                <configuration>
+                    <failIfNoTests>true</failIfNoTests>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <argLine>-Xmx512m</argLine>
+                    <properties>
+                        <configurationParameters>
+                            junit.jupiter.execution.parallel.enabled = false
+                        </configurationParameters>
+                    </properties>
                 </configuration>
             </plugin>
             <plugin>
